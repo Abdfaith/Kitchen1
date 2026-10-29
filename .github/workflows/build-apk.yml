@@ -18,13 +18,11 @@ jobs:
 
       - name: Patch SceneController
         working-directory: KitchenDesigner
-        run: sed -i '/screenSpaceReflectionsOptions/d;/ShadowType/d' app/src/main/java/com/kitchen/designer/engine/SceneController.kt
-
-      - name: Show source
-        working-directory: KitchenDesigner
         run: |
-          sed -n '80,95p;212,222p' app/src/main/java/com/kitchen/designer/engine/SceneController.kt
-          grep -rn "filament" app/build.gradle* gradle/libs.versions.toml 2>/dev/null || true
+          F=app/src/main/java/com/kitchen/designer/engine/SceneController.kt
+          sed -i '/screenSpaceReflectionsOptions/d;/ShadowType/d' $F
+          sed -i 's/\ba\.materialInstances/a.instance.materialInstances/g' $F
+          grep -n "materialInstances" $F
 
       - name: Build
         working-directory: KitchenDesigner
