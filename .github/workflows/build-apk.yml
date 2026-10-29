@@ -1,0 +1,28 @@
+name: Build APK
+on: [push, workflow_dispatch]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: unzip -q KitchenDesigner.zip
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: 17 }
+      - run: yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses > /dev/null || true
+      - uses: gradle/actions/setup-gradle@v4
+        with: { gradle-version: 8.9 }
+      - run: sed -i '/screenSpaceReflectionsOptions/d;/ShadowType/d' app/src/main/java/com/kitchen/designer/engine/SceneController.kt
+        working-directory: KitchenDesigner
+      - run: gradle :app:assembleDebug --console=plain > build.log 2>&1
+        working-directory: KitchenDesigner
+      - if: failure()
+        working-directory: KitchenDesigner
+        run: |
+          echo '### Build errors' >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          grep -E '^e: |What went wrong|^> |error:' build.log | head -30 >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: KitchenDesigner-debug-apk
+          path: KitchenDesigner/app/build/outputs/apk/debug/*.apk
