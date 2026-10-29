@@ -1,3 +1,8 @@
+      - name: Show source
+        working-directory: KitchenDesigner
+        run: |
+          sed -n '80,95p;212,222p' app/src/main/java/com/kitchen/designer/engine/SceneController.kt
+          grep -rn "filament" app/build.gradle* gradle/libs.versions.toml 2>/dev/null
 name: Build APK
 on: [push, workflow_dispatch]
 jobs:
