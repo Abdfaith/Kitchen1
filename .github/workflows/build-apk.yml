@@ -5,24 +5,43 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - run: unzip -q KitchenDesigner.zip
+
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: 17 }
+
       - run: yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses > /dev/null || true
+
       - uses: gradle/actions/setup-gradle@v4
         with: { gradle-version: 8.9 }
-      - run: sed -i '/screenSpaceReflectionsOptions/d;/ShadowType/d' app/src/main/java/com/kitchen/designer/engine/SceneController.kt
+
+      - name: Patch SceneController
         working-directory: KitchenDesigner
-      - run: gradle :app:assembleDebug --console=plain > build.log 2>&1
-        working-directory: KitchenDesigner
-       - if: failure()
+        run: sed -i '/screenSpaceReflectionsOptions/d;/ShadowType/d' app/src/main/java/com/kitchen/designer/engine/SceneController.kt
+
+      - name: Build
         working-directory: KitchenDesigner
         run: |
-          grep -nE '^e: |FAILED|What went wrong|error:|Execution failed' -A8 build.log | head -80
-          echo '### Build errors' >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          tail -40 build.log >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
+          set -o pipefail
+          gradle :app:assembleDebug --console=plain --stacktrace 2>&1 | tee build.log
+
+      - name: Show errors
+        if: failure()
+        working-directory: KitchenDesigner
+        run: |
+          echo "===== COMPILER ERRORS ====="
+          grep -nE '^e: |error:|FAILED|Execution failed' -A6 build.log | head -80 || true
+          echo "===== WHAT WENT WRONG ====="
+          grep -n 'What went wrong' -A15 build.log | head -40 || true
+          {
+            echo '### Build errors'
+            echo '```'
+            grep -E '^e: |error:|Execution failed' build.log | head -30 || true
+            tail -40 build.log
+            echo '```'
+          } >> $GITHUB_STEP_SUMMARY
+
       - uses: actions/upload-artifact@v4
         if: always()
         with:
